@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Dashboard</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      query,
+      where,
+      orderBy,
+      getDocs,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDBq46naDEGOMX_8psHUCyE14eZKFiOi5k",
+      authDomain: "student-3ff50.firebaseapp.com",
+      projectId: "student-3ff50",
+      storageBucket: "student-3ff50.firebasestorage.app",
+      messagingSenderId: "117896468121",
+      appId: "1:117896468121:web:25885acc15551edfe54a08"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let studentEmail = "";
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        studentEmail = user.email;
+      } else {
+        window.location.href = "index.html";
+      }
+    });
+
+    window.sendMessage = async function () {
+      const to = document.getElementById("messageTo").value.trim();
+      const message = document.getElementById("messageText").value.trim();
+
+      if (!to || !message) {
+        alert("Please enter recipient and message.");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "messages"), {
+          from: studentEmail,
+          to: to,
+          message: message,
+          timestamp: serverTimestamp(),
+        });
+        alert("Message sent!");
+        document.getElementById("messageText").value = "";
+      } catch (error) {
+        console.error("Error sending message:", error);
+        alert("Failed to send message.");
+      }
+    };
+
+    window.bookAppointment = async function () {
+      const teacher = document.getElementById("appointmentTeacher").value.trim();
+      const title = document.getElementById("appointmentTitle").value.trim();
+      const time = document.getElementById("appointmentTime").value;
+      const department = document.getElementById("appointmentDepartment").value.trim();
+      const subject = document.getElementById("appointmentSubject").value.trim();
+
+      if (!teacher || !title || !time || !department || !subject) {
+        alert("Please fill in all appointment details.");
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "appointments"), {
+          teacher: teacher,
+          student: studentEmail,
+          title: title,
+          time: new Date(time).toISOString(),
+          status: "pending",  // teacher approves later
+          department: department,
+          subject: subject,
+        });
+        alert("Appointment booked! Waiting for approval.");
+        document.getElementById("appointmentTeacher").value = "";
+        document.getElementById("appointmentTitle").value = "";
+        document.getElementById("appointmentTime").value = "";
+        document.getElementById("appointmentDepartment").value = "";
+        document.getElementById("appointmentSubject").value = "";
+      } catch (error) {
+        console.error("Error booking appointment:", error);
+        alert("Failed to book appointment.");
+      }
+    };
+
+    window.logout = async function () {
+      try {
+        await signOut(auth);
+        window.location.href = "index.html";
+      } catch (error) {
+        alert("Logout failed");
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f0f8ff;
+    }
+    h1, h3 {
+      color: #333;
+    }
+    .section {
+      background: white;
+      padding: 15px;
+      margin-bottom: 30px;
+      border-radius: 5px;
+      box-shadow: 0 0 5px #ccc;
+      max-width: 500px;
+    }
+    input, button, textarea {
+      margin: 5px 0;
+      padding: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Student Dashboard</h1>
+
+  <div class="section">
+    <h3>Send Message to Teacher</h3>
+    <input type="email" id="messageTo" placeholder="Teacher's Email" />
+    <textarea id="messageText" rows="4" placeholder="Type your message here..."></textarea>
+    <button onclick="sendMessage()">Send Message</button>
+  </div>
+
+  <div class="section">
+    <h3>Book Appointment</h3>
+    <input type="email" id="appointmentTeacher" placeholder="Teacher's Email" />
+    <input type="text" id="appointmentTitle" placeholder="Appointment Title" />
+    <input type="datetime-local" id="appointmentTime" />
+    <input type="text" id="appointmentDepartment" placeholder="Department" />
+    <input type="text" id="appointmentSubject" placeholder="Subject" />
+    <button onclick="bookAppointment()">Book Appointment</button>
+  </div>
+
+  <button onclick="logout()">Logout</button>
+</body>
+</html>

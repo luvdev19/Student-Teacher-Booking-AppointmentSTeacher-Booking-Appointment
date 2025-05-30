@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login / Sign Up</title>
+  <style>
+    body { font-family: Arial; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f1f1f1; }
+    .container { background: #fff; padding: 20px; border-radius: 10px; width: 300px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    .form { display: none; }
+    .form.active { display: block; }
+    select, input, button { width: 100%; margin: 10px 0; padding: 8px; }
+    .toggle { text-align: center; cursor: pointer; color: blue; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="signupForm" class="form active">
+      <h2>Sign Up</h2>
+      <input type="email" id="signupEmail" placeholder="Email" />
+      <input type="password" id="signupPassword" placeholder="Password" />
+      <select id="signupRole">
+        <option value="" disabled selected>Select Role</option>
+        <option value="admin">Admin</option>
+        <option value="teacher">Teacher</option>
+        <option value="student">Student</option>
+      </select>
+      <button onclick="signup()">Sign Up</button>
+      <p class="toggle" onclick="switchForm('signin')">Already have an account? Sign In</p>
+    </div>
+
+    <div id="signinForm" class="form">
+      <h2>Sign In</h2>
+      <input type="email" id="signinEmail" placeholder="Email" />
+      <input type="password" id="signinPassword" placeholder="Password" />
+      <button onclick="signin()">Sign In</button>
+      <p class="toggle" onclick="switchForm('signup')">Don't have an account? Sign Up</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDBq46naDEGOMX_8psHUCyE14eZKFiOi5k",
+      authDomain: "student-3ff50.firebaseapp.com",
+      projectId: "student-3ff50",
+      storageBucket: "student-3ff50.firebasestorage.app",
+      messagingSenderId: "117896468121",
+      appId: "1:117896468121:web:25885acc15551edfe54a08"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Toggle forms
+    window.switchForm = function (form) {
+      document.getElementById("signupForm").classList.remove("active");
+      document.getElementById("signinForm").classList.remove("active");
+      document.getElementById(form + "Form").classList.add("active");
+    };
+
+    // Sign up function
+    window.signup = async () => {
+      const email = document.getElementById("signupEmail").value;
+      const password = document.getElementById("signupPassword").value;
+      const role = document.getElementById("signupRole").value;
+
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        const uid = userCred.user.uid;
+
+        await setDoc(doc(db, "users", uid), {
+          email,
+          role,
+          approved: role === "student" ? false : true
+        });
+
+        redirectToDashboard(role);
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    };
+
+    // Sign in function
+    window.signin = async () => {
+      const email = document.getElementById("signinEmail").value;
+      const password = document.getElementById("signinPassword").value;
+
+      try {
+        const userCred = await signInWithEmailAndPassword(auth, email, password);
+        const uid = userCred.user.uid;
+        const userDoc = await getDoc(doc(db, "users", uid));
+
+        if (!userDoc.exists()) {
+          alert("No user role data found");
+          return;
+        }
+
+        const role = userDoc.data().role;
+        const approved = userDoc.data().approved ?? true;
+
+        if (role === "student" && !approved) {
+          alert("Student account not approved yet.");
+          return;
+        }
+
+        redirectToDashboard(role);
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    };
+
+    function redirectToDashboard(role) {
+      if (role === "admin") window.location.href = "admin-dashboard.html";
+      else if (role === "teacher") window.location.href = "teacher-dashboard.html";
+      else if (role === "student") window.location.href = "student-dashboard.html";
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    .section { margin-bottom: 30px; }
+    input, select, button { margin: 5px; padding: 8px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Admin Dashboard</h2>
+
+  <div class="section">
+    <h3>Add/Update Teacher</h3>
+    <input type="text" id="teacherId" placeholder="(hidden)" style="display:none;">
+    <input type="text" id="teacherName" placeholder="Name">
+    <input type="text" id="teacherDept" placeholder="Department">
+    <input type="text" id="teacherSubject" placeholder="Subject">
+    <input type="email" id="teacherEmail" placeholder="Email">
+    <button onclick="addOrUpdateTeacher()">Save</button>
+  </div>
+
+  <div class="section">
+    <h3>Teachers</h3>
+    <table id="teacherTable">
+      <thead>
+        <tr><th>Name</th><th>Dept</th><th>Subject</th><th>Email</th><th>Actions</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Pending Students</h3>
+    <table id="studentTable">
+      <thead>
+        <tr><th>Email</th><th>Approve</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script type="module" src="admin-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Teacher Dashboard</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f9f9f9;
+  }
+  h1, h3 {
+    color: #222;
+    text-align: center;
+  }
+  .container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  .section {
+    margin-bottom: 30px;
+  }
+  .section h3 {
+    margin-top: 0;
+  }
+  .section ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+  }
+  .section li {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+  }
+  .section li:last-child {
+    border-bottom: none;
+  }
+  button {
+    margin: 5px 10px 10px 0;
+    background-color: #007bff;
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #0056b3;
+  }
+  form {
+    margin-bottom: 30px;
+    background: white;
+    padding: 15px;
+    border-radius: 5px;
+    max-width: 700px;
+    box-shadow: 0 0 5px #ccc;
+  }
+  input, select {
+    width: 100%;
+    padding: 7px;
+    margin: 6px 0 12px 0;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+  }
+  label {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+  }
+  .alert {
+    margin-bottom: 30px;
+  }
+</style>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+  import {
+    getFirestore,
+    collection,
+    query,
+    where,
+    onSnapshot,
+    orderBy,
+    addDoc,
+    updateDoc,
+    doc,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+  import {
+    getAuth,
+    onAuthStateChanged,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDBq46naDEGOMX_8psHUCyE14eZKFiOi5k",
+    authDomain: "student-3ff50.firebaseapp.com",
+    projectId: "student-3ff50",
+    storageBucket: "student-3ff50.firebasestorage.app",
+    messagingSenderId: "117896468121",
+    appId: "1:117896468121:web:25885acc15551edfe54a08"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  let teacherEmail = "";
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      teacherEmail = user.email;
+      loadMessages();
+      loadAppointments();
+      document.getElementById("scheduleForm").style.display = "block";
+    } else {
+      window.location.href = "index.html";
+    }
+  });
+
+  // Load Messages sent to this teacher
+  function loadMessages() {
+    const messagesRef = collection(db, "messages");
+    const q = query(messagesRef, where("to", "==", teacherEmail), orderBy("timestamp", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      const messagesList = document.getElementById("messagesList");
+      messagesList.innerHTML = "";
+      snapshot.forEach((doc) => {
+        const msg = doc.data();
+        const timeStr = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleString() : "Unknown time";
+        const li = document.createElement("li");
+        li.textContent = `[${timeStr}] From: ${msg.from} — ${msg.message}`;
+        messagesList.appendChild(li);
+      });
+    }, (error) => {
+      console.error("Failed to load messages:", error);
+      alert("Failed to load messages. Check console.");
+    });
+  }
+
+  // Load Appointments for this teacher
+  function loadAppointments() {
+    const appointmentsRef = collection(db, "appointments");
+    const q = query(appointmentsRef, where("teacher", "==", teacherEmail), orderBy("time", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      const apptsList = document.getElementById("appointmentsList");
+      apptsList.innerHTML = "";
+      snapshot.forEach((doc) => {
+        const appt = doc.data();
+        const id = doc.id;
+        const timeStr = appt.time ? new Date(appt.time).toLocaleString() : "Unknown time";
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <b>${appt.title}</b> - Student: ${appt.student} - Dept: ${appt.department} - Subject: ${appt.subject} <br/>
+          Time: ${timeStr} - Status: <span id="status-${id}">${appt.status}</span> <br/>
+          <button onclick="changeAppointmentStatus('${id}', 'approved')">Approve</button>
+          <button onclick="changeAppointmentStatus('${id}', 'cancelled')">Cancel</button>
+        `;
+        apptsList.appendChild(li);
+      });
+    }, (error) => {
+      console.error("Failed to load appointments:", error);
+      alert("Failed to load appointments. Check console.");
+    });
+  }
+
+  // Change appointment status (approve/cancel)
+  window.changeAppointmentStatus = async (id, status) => {
+    try {
+      const apptRef = doc(db, "appointments", id);
+      await updateDoc(apptRef, { status });
+      document.getElementById(`status-${id}`).textContent = status;
+      alert(`Appointment ${status}`);
+    } catch (error) {
+      alert("Failed to update appointment status.");
+      console.error(error);
+    }
+  };
+
+  // Schedule new appointment (by teacher)
+  window.scheduleAppointment = async (e) => {
+    e.preventDefault();
+    const title = document.getElementById("title").value.trim();
+    const student = document.getElementById("studentEmail").value.trim();
+    const department = document.getElementById("department").value.trim();
+    const subject = document.getElementById("subject").value.trim();
+    const timeStr = document.getElementById("time").value;
+
+    if (!title || !student || !department || !subject || !timeStr) {
+      alert("Please fill all fields.");
+      return;
+    }
+
+    const time = new Date(timeStr).getTime();
+
+    try {
+      await addDoc(collection(db, "appointments"), {
+        title,
+        teacher: teacherEmail,
+        student,
+        department,
+        subject,
+        time,
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
+      alert("Appointment scheduled.");
+      e.target.reset();
+    } catch (error) {
+      alert("Failed to schedule appointment.");
+      console.error(error);
+    }
+  };
+
+  // Logout
+  window.logout = async () => {
+    try {
+      await signOut(auth);
+      window.location.href = "index.html";
+    } catch (error) {
+      alert("Logout failed");
+    }
+  };
+</script>
+</head>
+<body>
+  <div class="container">
+    <h1>Teacher Dashboard</h1>
+
+    <form id="scheduleForm" style="display:none;" onsubmit="scheduleAppointment(event)">
+      <h3>Schedule Appointment</h3>
+      <label for="title">Appointment Title</label>
+      <input type="text" id="title" placeholder="Enter appointment title" required />
+
+      <label for="studentEmail">Student Email</label>
+      <input type="email" id="studentEmail" placeholder="Enter student email" required />
+
+      <label for="department">Department</label>
+      <input type="text" id="department" placeholder="Enter department" required />
+
+      <label for="subject">Subject</label>
+      <input type="text" id="subject" placeholder="Enter subject" required />
+
+      <label for="time">Appointment Date & Time</label>
+      <input type="datetime-local" id="time" required />
+
+      <button type="submit">Schedule</button>
+    </form>
+
+    <div class="section">
+      <h3>Messages</h3>
+      <ul id="messagesList"><li>Loading messages...</li></ul>
+    </div>
+
+    <div class="section">
+      <h3>Appointments</h3>
+      <ul id="appointmentsList"><li>Loading appointments...</li></ul>
+    </div>
+
+    <button onclick="logout()">Logout</button>
+  </div>
+</body>
+</html>
+
